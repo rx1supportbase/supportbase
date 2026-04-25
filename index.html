@@ -1,0 +1,1296 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="theme-color" content="#0a1628">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="SupportBase">
+  <title>SupportBase</title>
+  <link rel="manifest" href="manifest.json">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    :root {
+      --navy: #0a1628;
+      --navy-surface: #0f2240;
+      --navy-card: #152a4a;
+      --teal: #2dd4c8;
+      --teal-dark: #1aab9e;
+      --teal-glow: rgba(45, 212, 200, 0.15);
+      --white: #ffffff;
+      --gray-100: #f4f6f9;
+      --gray-200: #e8ecf0;
+      --gray-400: #9aa5b4;
+      --gray-600: #555f6e;
+      --red: #ff4757;
+      --orange: #ff9f43;
+      --green: #26de81;
+      --font-display: 'Syne', sans-serif;
+      --font-body: 'DM Sans', sans-serif;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+
+    body {
+      font-family: var(--font-body);
+      background: var(--navy);
+      color: var(--white);
+      min-height: 100vh;
+      max-width: 430px;
+      margin: 0 auto;
+      position: relative;
+      overflow-x: hidden;
+    }
+
+    /* ===== SCREEN SYSTEM ===== */
+    .screen { display: none; flex-direction: column; min-height: 100vh; animation: fadeIn 0.2s ease; }
+    .screen.active { display: flex; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+
+    /* ===== LOGIN SCREEN ===== */
+    #login-screen {
+      background: var(--navy);
+      justify-content: center;
+      align-items: center;
+      padding: 40px 28px;
+      position: relative;
+      overflow: hidden;
+    }
+    .login-bg {
+      position: absolute; inset: 0;
+      background: radial-gradient(ellipse at 20% 20%, rgba(45,212,200,0.08) 0%, transparent 60%),
+                  radial-gradient(ellipse at 80% 80%, rgba(45,212,200,0.05) 0%, transparent 50%);
+      pointer-events: none;
+    }
+    .login-logo {
+      text-align: center;
+      margin-bottom: 48px;
+      position: relative;
+    }
+    .login-icon {
+      width: 72px; height: 72px;
+      border-radius: 20px;
+      background: var(--navy-surface);
+      border: 1.5px solid var(--teal);
+      display: flex; align-items: center; justify-content: center;
+      margin: 0 auto 16px;
+      box-shadow: 0 0 30px rgba(45,212,200,0.2);
+    }
+    .login-wordmark {
+      font-family: var(--font-display);
+      font-size: 28px; font-weight: 800;
+      color: var(--white);
+      letter-spacing: -0.5px;
+    }
+    .login-wordmark span { color: var(--teal); }
+    .login-byline { color: var(--gray-400); font-size: 12px; letter-spacing: 1.5px; text-transform: uppercase; margin-top: 4px; }
+
+    .login-form { width: 100%; position: relative; }
+    .field-group { margin-bottom: 16px; }
+    .field-label { font-size: 11px; font-weight: 600; color: var(--gray-400); text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 8px; display: block; }
+    .field-input {
+      width: 100%; background: var(--navy-surface);
+      border: 1.5px solid rgba(255,255,255,0.08);
+      border-radius: 12px; padding: 14px 16px;
+      font-size: 15px; color: var(--white);
+      font-family: var(--font-body);
+      outline: none; transition: border-color 0.2s;
+    }
+    .field-input:focus { border-color: var(--teal); }
+    .field-input::placeholder { color: var(--gray-600); }
+
+    .btn-primary {
+      width: 100%; background: var(--teal);
+      color: var(--navy); border: none;
+      border-radius: 12px; padding: 15px;
+      font-size: 15px; font-weight: 700;
+      font-family: var(--font-display);
+      cursor: pointer; letter-spacing: 0.3px;
+      transition: all 0.2s;
+      margin-top: 8px;
+    }
+    .btn-primary:hover { background: var(--teal-dark); transform: translateY(-1px); }
+    .btn-primary:active { transform: translateY(0); }
+    .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+
+    .login-error { color: var(--red); font-size: 13px; text-align: center; margin-top: 12px; display: none; }
+    .login-loading { text-align: center; color: var(--gray-400); font-size: 13px; margin-top: 12px; display: none; }
+
+    /* ===== APP HEADER ===== */
+    .app-header {
+      background: var(--navy);
+      padding: 52px 20px 16px;
+      border-bottom: 1px solid rgba(255,255,255,0.06);
+      position: sticky; top: 0; z-index: 100;
+    }
+    .header-row { display: flex; align-items: center; gap: 12px; }
+    .header-icon {
+      width: 36px; height: 36px; border-radius: 10px;
+      background: var(--navy-surface);
+      border: 1px solid var(--teal);
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0;
+    }
+    .header-brand { font-family: var(--font-display); font-size: 16px; font-weight: 800; flex: 1; }
+    .header-brand span { color: var(--teal); }
+    .header-role-badge {
+      background: var(--teal-glow); color: var(--teal);
+      font-size: 10px; font-weight: 700;
+      padding: 3px 10px; border-radius: 20px;
+      border: 1px solid rgba(45,212,200,0.3);
+      text-transform: uppercase; letter-spacing: 0.5px;
+    }
+
+    /* ===== INNER SCREEN HEADER ===== */
+    .inner-header {
+      background: var(--navy);
+      padding: 52px 20px 16px;
+      display: flex; align-items: center; gap: 12px;
+      border-bottom: 1px solid rgba(255,255,255,0.06);
+    }
+    .back-btn {
+      width: 36px; height: 36px; border-radius: 10px;
+      background: var(--navy-surface); border: 1px solid rgba(255,255,255,0.08);
+      color: var(--white); font-size: 18px;
+      cursor: pointer; display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0;
+    }
+    .inner-title { font-family: var(--font-display); font-size: 18px; font-weight: 700; flex: 1; }
+    .inner-sub { color: var(--gray-400); font-size: 11px; margin-top: 2px; }
+
+    /* ===== SCROLL BODY ===== */
+    .scroll-body { flex: 1; overflow-y: auto; padding-bottom: 90px; background: var(--gray-100); }
+    .scroll-body-dark { flex: 1; overflow-y: auto; padding-bottom: 90px; background: var(--navy); }
+
+    /* ===== SECTION TITLE ===== */
+    .section-title {
+      font-size: 10px; font-weight: 700;
+      letter-spacing: 1.2px; text-transform: uppercase;
+      color: var(--gray-600); margin: 20px 20px 10px;
+    }
+    .section-title-dark {
+      font-size: 10px; font-weight: 700;
+      letter-spacing: 1.2px; text-transform: uppercase;
+      color: var(--gray-400); margin: 20px 20px 10px;
+    }
+
+    /* ===== WELCOME CARD ===== */
+    .welcome-card {
+      margin: 16px 20px 0;
+      background: linear-gradient(135deg, var(--navy-surface) 0%, #1a3a5c 100%);
+      border-radius: 20px; padding: 20px;
+      border: 1px solid rgba(45,212,200,0.2);
+      position: relative; overflow: hidden;
+    }
+    .welcome-card::before {
+      content: ''; position: absolute;
+      top: -20px; right: -20px;
+      width: 100px; height: 100px;
+      background: radial-gradient(circle, rgba(45,212,200,0.15) 0%, transparent 70%);
+      pointer-events: none;
+    }
+    .welcome-greeting { color: var(--gray-400); font-size: 12px; }
+    .welcome-name { font-family: var(--font-display); font-size: 20px; font-weight: 700; margin-top: 4px; }
+    .welcome-sla {
+      display: inline-flex; align-items: center; gap: 6px;
+      background: rgba(45,212,200,0.1);
+      border: 1px solid rgba(45,212,200,0.3);
+      border-radius: 20px; padding: 5px 12px;
+      margin-top: 12px;
+    }
+    .sla-dot { width: 7px; height: 7px; background: var(--teal); border-radius: 50%; }
+    .sla-text { color: var(--teal); font-size: 11px; font-weight: 600; }
+
+    /* ===== ACTION GRID ===== */
+    .action-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; padding: 0 20px; }
+    .action-card {
+      background: var(--white); border-radius: 16px;
+      border: 1.5px solid var(--gray-200);
+      padding: 16px 14px; cursor: pointer;
+      transition: all 0.2s;
+    }
+    .action-card:hover { border-color: var(--teal); transform: translateY(-2px); box-shadow: 0 8px 20px rgba(0,0,0,0.08); }
+    .action-card:active { transform: translateY(0); }
+    .action-card.featured { border-color: var(--teal); background: #f0fffe; }
+    .action-icon {
+      width: 42px; height: 42px; border-radius: 12px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 20px; margin-bottom: 10px;
+    }
+    .action-label { font-family: var(--font-display); font-size: 13px; font-weight: 700; color: #111; }
+    .action-desc { font-size: 11px; color: var(--gray-600); margin-top: 3px; }
+
+    /* ===== TICKET CARDS ===== */
+    .ticket-card {
+      background: var(--white); border-radius: 14px;
+      border: 1px solid var(--gray-200);
+      margin: 0 20px 10px; padding: 14px 16px;
+      display: flex; align-items: center; gap: 12px;
+      cursor: pointer; transition: border-color 0.2s;
+    }
+    .ticket-card:hover { border-color: var(--teal); }
+    .ticket-num { font-family: var(--font-display); font-size: 12px; font-weight: 700; color: var(--teal); min-width: 72px; }
+    .ticket-info { flex: 1; }
+    .ticket-desc { font-size: 13px; font-weight: 600; color: #111; }
+    .ticket-date { font-size: 11px; color: var(--gray-400); margin-top: 2px; }
+    .status-badge {
+      font-size: 10px; font-weight: 700;
+      padding: 3px 9px; border-radius: 20px;
+      white-space: nowrap;
+    }
+    .status-open { background: #fff3e0; color: #e65100; }
+    .status-progress { background: #e3f2fd; color: #1565c0; }
+    .status-closed { background: #e8f5e9; color: #2e7d32; }
+
+    /* ===== FORM STYLES ===== */
+    .form-body { padding: 20px; background: var(--gray-100); flex: 1; }
+    .form-field { margin-bottom: 18px; }
+    .form-label { font-size: 11px; font-weight: 700; color: var(--gray-600); text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 8px; display: flex; align-items: center; gap: 8px; }
+    .optional-tag { color: var(--teal); font-size: 10px; font-weight: 700; background: var(--teal-glow); padding: 2px 7px; border-radius: 10px; }
+    .form-input {
+      width: 100%; background: var(--white);
+      border: 1.5px solid var(--gray-200);
+      border-radius: 12px; padding: 13px 16px;
+      font-size: 14px; color: #111;
+      font-family: var(--font-body); outline: none;
+      transition: border-color 0.2s;
+    }
+    .form-input:focus { border-color: var(--teal); }
+    textarea.form-input { resize: none; }
+
+    /* Category grid */
+    .cat-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 18px; }
+    .cat-btn {
+      background: var(--white); border: 1.5px solid var(--gray-200);
+      border-radius: 12px; padding: 12px 6px;
+      text-align: center; cursor: pointer; transition: all 0.15s;
+    }
+    .cat-btn.selected { border-color: var(--teal); background: #f0fffe; }
+    .cat-emoji { font-size: 22px; display: block; margin-bottom: 5px; }
+    .cat-label { font-size: 10px; font-weight: 700; color: #333; }
+
+    /* Priority */
+    .priority-row { display: flex; gap: 8px; }
+    .pri-btn {
+      flex: 1; background: var(--white);
+      border: 1.5px solid var(--gray-200);
+      border-radius: 10px; padding: 10px 6px;
+      text-align: center; cursor: pointer;
+      font-size: 12px; font-weight: 700; color: var(--gray-600);
+      transition: all 0.15s;
+    }
+    .pri-low.selected { border-color: #26de81; background: #f0fff5; color: #1a9e57; }
+    .pri-med.selected { border-color: #ff9f43; background: #fff8f0; color: #c97b00; }
+    .pri-high.selected { border-color: #ff4757; background: #fff5f5; color: #cc0000; }
+
+    /* Photo box */
+    .photo-box {
+      border: 1.5px dashed var(--gray-200);
+      border-radius: 12px; padding: 20px;
+      text-align: center; cursor: pointer;
+      background: var(--white); color: var(--gray-400);
+      font-size: 12px; transition: border-color 0.2s;
+    }
+    .photo-box:hover { border-color: var(--teal); }
+    .photo-icon { font-size: 28px; display: block; margin-bottom: 6px; }
+
+    /* Submit button */
+    .submit-btn {
+      width: 100%; background: var(--teal);
+      color: var(--navy); border: none;
+      border-radius: 14px; padding: 16px;
+      font-size: 15px; font-weight: 800;
+      font-family: var(--font-display);
+      cursor: pointer; margin-top: 8px;
+      transition: all 0.2s; letter-spacing: 0.3px;
+    }
+    .submit-btn:hover { background: var(--teal-dark); transform: translateY(-1px); }
+    .submit-btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+
+    /* ===== SUCCESS SCREEN ===== */
+    .success-body {
+      flex: 1; display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      padding: 40px 28px; background: var(--gray-100);
+      text-align: center;
+    }
+    .success-ring {
+      width: 90px; height: 90px; border-radius: 50%;
+      background: #e8fff5; border: 3px solid var(--green);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 40px; margin-bottom: 24px;
+      animation: popIn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    }
+    @keyframes popIn { from { transform: scale(0.5); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+    .success-title { font-family: var(--font-display); font-size: 22px; font-weight: 800; color: #111; }
+    .ticket-display {
+      background: var(--navy); border-radius: 16px;
+      padding: 18px 32px; margin: 20px 0;
+      border: 2px solid var(--teal);
+      box-shadow: 0 0 30px rgba(45,212,200,0.15);
+    }
+    .ticket-display-label { color: var(--gray-400); font-size: 10px; text-transform: uppercase; letter-spacing: 1.5px; }
+    .ticket-display-num { font-family: var(--font-display); color: var(--teal); font-size: 32px; font-weight: 800; letter-spacing: 3px; margin-top: 4px; }
+    .success-msg { color: var(--gray-600); font-size: 13px; line-height: 1.7; }
+    .email-confirm {
+      background: var(--white); border-radius: 12px;
+      border: 1px solid var(--gray-200);
+      padding: 14px 16px; width: 100%;
+      text-align: left; margin-top: 16px;
+      font-size: 12px; color: var(--gray-600);
+      line-height: 1.7;
+    }
+    .home-btn {
+      width: 100%; background: var(--navy);
+      color: var(--white); border: none;
+      border-radius: 14px; padding: 15px;
+      font-size: 15px; font-weight: 700;
+      font-family: var(--font-display);
+      cursor: pointer; margin-top: 20px;
+      transition: background 0.2s;
+    }
+
+    /* ===== GM DASHBOARD ===== */
+    .stat-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; padding: 0 20px; }
+    .stat-card {
+      background: var(--white); border-radius: 16px;
+      border: 1.5px solid var(--gray-200); padding: 16px 14px;
+    }
+    .stat-card.alert { border-color: var(--red); background: #fff8f8; }
+    .stat-card.good { border-color: var(--green); background: #f8fff8; }
+    .stat-card.info { border-color: var(--teal); background: #f0fffe; }
+    .stat-num { font-family: var(--font-display); font-size: 30px; font-weight: 800; color: #111; }
+    .stat-card.alert .stat-num { color: var(--red); }
+    .stat-card.good .stat-num { color: #1a9e57; }
+    .stat-card.info .stat-num { color: var(--teal-dark); }
+    .stat-label { font-size: 11px; color: var(--gray-600); margin-top: 3px; }
+
+    /* Maintenance items */
+    .maint-card {
+      background: var(--white); border-radius: 14px;
+      border: 1px solid var(--gray-200);
+      margin: 0 20px 10px; padding: 14px 16px;
+      border-left: 3px solid var(--gray-200);
+    }
+    .maint-card.overdue { border-left-color: var(--red); }
+    .maint-card.due-soon { border-left-color: var(--orange); }
+    .maint-card.upcoming { border-left-color: var(--teal); }
+    .maint-top { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+    .maint-name { font-family: var(--font-display); font-size: 13px; font-weight: 700; color: #111; flex: 1; }
+    .freq-pill { font-size: 10px; font-weight: 700; padding: 2px 8px; border-radius: 10px; background: #e3f2fd; color: #1565c0; }
+    .maint-client { font-size: 11px; color: var(--gray-600); }
+    .maint-due { font-size: 11px; font-weight: 700; margin-top: 3px; }
+    .maint-due.overdue { color: var(--red); }
+    .maint-due.soon { color: var(--orange); }
+    .maint-due.upcoming { color: var(--teal-dark); }
+    .maint-actions { display: flex; gap: 8px; margin-top: 10px; }
+    .maint-btn {
+      flex: 1; border: none; border-radius: 8px;
+      padding: 8px 6px; font-size: 11px; font-weight: 700;
+      cursor: pointer; font-family: var(--font-body);
+      transition: all 0.15s;
+    }
+    .maint-btn.done { background: #e8f5e9; color: #2e7d32; }
+    .maint-btn.remind { background: #e3f2fd; color: #1565c0; }
+    .maint-btn.remind:hover { background: var(--teal); color: var(--navy); }
+
+    /* Tab bar */
+    .tab-bar { display: flex; background: var(--white); border-bottom: 1px solid var(--gray-200); }
+    .tab {
+      flex: 1; padding: 12px 4px; text-align: center;
+      font-size: 11px; font-weight: 700; color: var(--gray-400);
+      cursor: pointer; border-bottom: 2px solid transparent;
+      transition: all 0.15s;
+    }
+    .tab.active { color: var(--teal-dark); border-bottom-color: var(--teal); }
+
+    /* ===== CLIENT CARDS ===== */
+    .client-card {
+      background: var(--white); border-radius: 14px;
+      border: 1px solid var(--gray-200);
+      margin: 0 20px 10px; overflow: hidden;
+      cursor: pointer; transition: border-color 0.2s;
+    }
+    .client-card:hover { border-color: var(--teal); }
+    .client-header { padding: 14px 16px; display: flex; align-items: center; gap: 12px; }
+    .client-avatar {
+      width: 42px; height: 42px; border-radius: 50%;
+      background: var(--navy-surface);
+      display: flex; align-items: center; justify-content: center;
+      font-family: var(--font-display); font-size: 13px;
+      font-weight: 800; color: var(--teal);
+    }
+    .client-name { font-family: var(--font-display); font-size: 14px; font-weight: 700; color: #111; }
+    .client-sla { font-size: 11px; color: var(--gray-600); margin-top: 2px; }
+    .client-badges { margin-left: auto; display: flex; flex-direction: column; gap: 4px; align-items: flex-end; }
+    .mini-badge { font-size: 10px; font-weight: 700; padding: 2px 8px; border-radius: 10px; }
+    .mini-badge.open { background: #fff3e0; color: #e65100; }
+    .mini-badge.due { background: #ffebee; color: #c62828; }
+    .mini-badge.ok { background: #e8f5e9; color: #2e7d32; }
+    .client-strip { background: var(--gray-100); border-top: 1px solid var(--gray-200); padding: 8px 16px; display: flex; gap: 8px; overflow-x: auto; }
+    .strip-pill { flex-shrink: 0; border-radius: 20px; padding: 4px 10px; font-size: 10px; font-weight: 600; white-space: nowrap; background: var(--white); border: 1px solid var(--gray-200); color: var(--gray-600); }
+    .strip-pill.due { border-color: var(--red); background: #fff5f5; color: var(--red); }
+    .strip-pill.soon { border-color: var(--orange); background: #fff8f0; color: var(--orange); }
+    .strip-pill.done { border-color: var(--green); background: #f0fff5; color: #1a9e57; }
+
+    /* ===== BOTTOM NAV ===== */
+    .bottom-nav {
+      position: fixed; bottom: 0; left: 50%; transform: translateX(-50%);
+      width: 100%; max-width: 430px;
+      background: var(--white); border-top: 1px solid var(--gray-200);
+      display: flex; padding: 8px 0 20px; z-index: 200;
+    }
+    .nav-item { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 3px; cursor: pointer; padding: 4px 0; }
+    .nav-ico { font-size: 22px; }
+    .nav-lbl { font-size: 10px; font-weight: 600; color: var(--gray-400); }
+    .nav-item.active .nav-lbl { color: var(--teal-dark); }
+
+    /* ===== MODAL ===== */
+    .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 300; display: none; align-items: flex-end; justify-content: center; }
+    .modal-overlay.open { display: flex; }
+    .modal-sheet {
+      background: var(--white); border-radius: 24px 24px 0 0;
+      padding: 24px 20px 36px; width: 100%; max-width: 430px;
+      animation: slideUp 0.3s ease;
+    }
+    @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
+    .modal-handle { width: 40px; height: 4px; background: var(--gray-200); border-radius: 2px; margin: 0 auto 20px; }
+    .modal-title { font-family: var(--font-display); font-size: 17px; font-weight: 800; color: #111; margin-bottom: 4px; }
+    .modal-sub { font-size: 13px; color: var(--gray-600); margin-bottom: 16px; }
+    .modal-preview { background: var(--gray-100); border-radius: 12px; padding: 14px; margin-bottom: 16px; font-size: 12px; color: var(--gray-600); line-height: 1.8; }
+    .modal-btn { width: 100%; border: none; border-radius: 12px; padding: 14px; font-size: 14px; font-weight: 700; cursor: pointer; margin-bottom: 8px; font-family: var(--font-display); }
+    .modal-btn.primary { background: var(--teal); color: var(--navy); }
+    .modal-btn.secondary { background: var(--gray-100); color: var(--gray-600); }
+
+    /* ===== TOAST ===== */
+    .toast {
+      position: fixed; bottom: 90px; left: 50%; transform: translateX(-50%) translateY(20px);
+      background: var(--navy); color: var(--white);
+      padding: 12px 20px; border-radius: 12px;
+      font-size: 13px; font-weight: 600;
+      border: 1px solid var(--teal);
+      opacity: 0; transition: all 0.3s; z-index: 500;
+      white-space: nowrap;
+    }
+    .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+    /* ===== ANNEXURE ===== */
+    .annex-group { margin: 0 20px 16px; }
+    .annex-header {
+      background: var(--navy); color: var(--white);
+      border-radius: 10px 10px 0 0; padding: 10px 14px;
+      display: flex; align-items: center; justify-content: space-between;
+      font-family: var(--font-display); font-size: 12px; font-weight: 700;
+      text-transform: uppercase; letter-spacing: 0.8px;
+    }
+    .annex-count { background: var(--teal); color: var(--navy); font-size: 10px; padding: 1px 8px; border-radius: 10px; font-weight: 800; }
+    .annex-row {
+      background: var(--white); border: 1px solid var(--gray-200);
+      border-top: none; padding: 12px 14px;
+      display: flex; align-items: center; gap: 12px;
+    }
+    .annex-row:last-child { border-radius: 0 0 10px 10px; }
+    .annex-check {
+      width: 22px; height: 22px; border-radius: 50%;
+      border: 2px solid var(--gray-200);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 12px; cursor: pointer; flex-shrink: 0;
+      transition: all 0.15s;
+    }
+    .annex-check.done { background: var(--green); border-color: var(--green); color: var(--white); }
+    .annex-text { flex: 1; font-size: 12px; color: #333; line-height: 1.4; }
+    .annex-date { font-size: 10px; color: var(--gray-400); text-align: right; flex-shrink: 0; }
+
+    /* Loading spinner */
+    .spinner { display: inline-block; width: 20px; height: 20px; border: 2px solid rgba(255,255,255,0.3); border-top-color: white; border-radius: 50%; animation: spin 0.8s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* Logout */
+    .logout-btn { background: none; border: 1px solid rgba(255,255,255,0.1); color: var(--gray-400); border-radius: 8px; padding: 4px 10px; font-size: 11px; cursor: pointer; }
+  </style>
+</head>
+<body>
+
+  <!-- ==================== LOGIN SCREEN ==================== -->
+  <div class="screen active" id="login-screen">
+    <div class="login-bg"></div>
+    <div class="login-logo">
+      <div class="login-icon">
+        <svg width="38" height="38" viewBox="0 0 32 32" fill="none">
+          <circle cx="16" cy="16" r="2.5" fill="#2dd4c8"/>
+          <line x1="16" y1="13.5" x2="16" y2="7" stroke="#2dd4c8" stroke-width="1.2" stroke-linecap="round"/>
+          <line x1="16" y1="18.5" x2="16" y2="25" stroke="#2dd4c8" stroke-width="1.2" stroke-linecap="round"/>
+          <line x1="18.5" y1="16" x2="25" y2="16" stroke="#2dd4c8" stroke-width="1.2" stroke-linecap="round"/>
+          <line x1="13.5" y1="16" x2="7" y2="16" stroke="#2dd4c8" stroke-width="1.2" stroke-linecap="round"/>
+          <line x1="17.8" y1="14.2" x2="22" y2="10" stroke="#2dd4c8" stroke-width="1" stroke-linecap="round"/>
+          <line x1="14.2" y1="17.8" x2="10" y2="22" stroke="#2dd4c8" stroke-width="1" stroke-linecap="round"/>
+          <line x1="17.8" y1="17.8" x2="22" y2="22" stroke="#2dd4c8" stroke-width="1" stroke-linecap="round"/>
+          <line x1="14.2" y1="14.2" x2="10" y2="10" stroke="#2dd4c8" stroke-width="1" stroke-linecap="round"/>
+          <circle cx="16" cy="7" r="1.8" fill="#2dd4c8" opacity="0.8"/>
+          <circle cx="16" cy="25" r="1.8" fill="#2dd4c8" opacity="0.8"/>
+          <circle cx="25" cy="16" r="1.8" fill="#2dd4c8" opacity="0.8"/>
+          <circle cx="7" cy="16" r="1.8" fill="#2dd4c8" opacity="0.8"/>
+          <circle cx="22" cy="10" r="1.5" fill="#2dd4c8" opacity="0.5"/>
+          <circle cx="10" cy="22" r="1.5" fill="#2dd4c8" opacity="0.5"/>
+          <circle cx="22" cy="22" r="1.5" fill="#2dd4c8" opacity="0.5"/>
+          <circle cx="10" cy="10" r="1.5" fill="#2dd4c8" opacity="0.5"/>
+        </svg>
+      </div>
+      <div class="login-wordmark">support<span>base</span></div>
+      <div class="login-byline">by RX1</div>
+    </div>
+    <div class="login-form">
+      <div class="field-group">
+        <label class="field-label">Email address</label>
+        <input class="field-input" type="email" id="login-email" placeholder="you@company.co.za" autocomplete="email">
+      </div>
+      <div class="field-group">
+        <label class="field-label">Password</label>
+        <input class="field-input" type="password" id="login-password" placeholder="••••••••" autocomplete="current-password">
+      </div>
+      <button class="btn-primary" id="login-btn" onclick="handleLogin()">Sign In</button>
+      <div class="login-error" id="login-error"></div>
+      <div class="login-loading" id="login-loading">Signing in...</div>
+    </div>
+  </div>
+
+  <!-- ==================== CLIENT HOME SCREEN ==================== -->
+  <div class="screen" id="client-home-screen">
+    <div class="app-header">
+      <div class="header-row">
+        <div class="header-icon">
+          <svg width="20" height="20" viewBox="0 0 32 32" fill="none">
+            <circle cx="16" cy="16" r="2.5" fill="#2dd4c8"/>
+            <line x1="16" y1="13.5" x2="16" y2="7" stroke="#2dd4c8" stroke-width="1.5" stroke-linecap="round"/>
+            <line x1="16" y1="18.5" x2="16" y2="25" stroke="#2dd4c8" stroke-width="1.5" stroke-linecap="round"/>
+            <line x1="18.5" y1="16" x2="25" y2="16" stroke="#2dd4c8" stroke-width="1.5" stroke-linecap="round"/>
+            <line x1="13.5" y1="16" x2="7" y2="16" stroke="#2dd4c8" stroke-width="1.5" stroke-linecap="round"/>
+          </svg>
+        </div>
+        <div class="header-brand">MES <span>AFRICA</span></div>
+        <div class="header-role-badge">Client</div>
+      </div>
+    </div>
+    <div class="scroll-body">
+      <div class="welcome-card">
+        <div class="welcome-greeting">Good day,</div>
+        <div class="welcome-name" id="client-name-display">Loading...</div>
+        <div class="welcome-sla">
+          <div class="sla-dot"></div>
+          <div class="sla-text" id="client-sla-display">O&M SLA — Active</div>
+        </div>
+      </div>
+
+      <div class="section-title" style="margin-top:24px;">Log a Request</div>
+      <div class="action-grid">
+        <div class="action-card featured" onclick="showScreen('fault-screen')">
+          <div class="action-icon" style="background:#fff3e0;">⚡</div>
+          <div class="action-label">Fault Report</div>
+          <div class="action-desc">Something is broken</div>
+        </div>
+        <div class="action-card" onclick="showScreen('service-screen')">
+          <div class="action-icon" style="background:#e3f2fd;">🔧</div>
+          <div class="action-label">Service Request</div>
+          <div class="action-desc">Scheduled or ad hoc</div>
+        </div>
+        <div class="action-card" onclick="showScreen('fault-screen')">
+          <div class="action-icon" style="background:#e8f5e9;">⚙️</div>
+          <div class="action-label">Maintenance</div>
+          <div class="action-desc">Preventive / routine</div>
+        </div>
+        <div class="action-card" onclick="showScreen('fault-screen')">
+          <div class="action-icon" style="background:#fce4ec;">📋</div>
+          <div class="action-label">General Query</div>
+          <div class="action-desc">Questions & info</div>
+        </div>
+      </div>
+
+      <div class="section-title" style="margin-top:24px;">My Tickets</div>
+      <div id="client-tickets-list">
+        <div style="text-align:center;padding:30px;color:var(--gray-400);font-size:13px;">Loading tickets...</div>
+      </div>
+    </div>
+    <div class="bottom-nav">
+      <div class="nav-item active"><span class="nav-ico">🏠</span><span class="nav-lbl">Home</span></div>
+      <div class="nav-item" onclick="showScreen('my-tickets-screen')"><span class="nav-ico">🎫</span><span class="nav-lbl">Tickets</span></div>
+      <div class="nav-item" onclick="showScreen('schedule-view-screen')"><span class="nav-ico">📅</span><span class="nav-lbl">Schedule</span></div>
+      <div class="nav-item" onclick="showScreen('profile-screen')"><span class="nav-ico">👤</span><span class="nav-lbl">Profile</span></div>
+    </div>
+  </div>
+
+  <!-- ==================== FAULT REPORT SCREEN ==================== -->
+  <div class="screen" id="fault-screen">
+    <div class="inner-header">
+      <button class="back-btn" onclick="showScreen('client-home-screen')">←</button>
+      <div>
+        <div class="inner-title">Fault Report</div>
+        <div class="inner-sub">Describe the issue as clearly as possible</div>
+      </div>
+    </div>
+    <div class="form-body">
+      <div class="form-field">
+        <div class="form-label">Fault Category</div>
+        <div class="cat-grid" id="fault-cat-grid">
+          <div class="cat-btn selected" onclick="selectCat('fault-cat-grid',this)"><span class="cat-emoji">⚡</span><span class="cat-label">Electrical</span></div>
+          <div class="cat-btn" onclick="selectCat('fault-cat-grid',this)"><span class="cat-emoji">💧</span><span class="cat-label">Plumbing</span></div>
+          <div class="cat-btn" onclick="selectCat('fault-cat-grid',this)"><span class="cat-emoji">🔋</span><span class="cat-label">Generator</span></div>
+          <div class="cat-btn" onclick="selectCat('fault-cat-grid',this)"><span class="cat-emoji">☀️</span><span class="cat-label">Solar</span></div>
+          <div class="cat-btn" onclick="selectCat('fault-cat-grid',this)"><span class="cat-emoji">🌡️</span><span class="cat-label">Heat Pump</span></div>
+          <div class="cat-btn" onclick="selectCat('fault-cat-grid',this)"><span class="cat-emoji">🔩</span><span class="cat-label">Other</span></div>
+        </div>
+      </div>
+      <div class="form-field">
+        <div class="form-label">Priority</div>
+        <div class="priority-row">
+          <div class="pri-btn pri-low" onclick="selectPri(this,'pri-low')">🟢 Low</div>
+          <div class="pri-btn pri-med selected" onclick="selectPri(this,'pri-med')">🟠 Medium</div>
+          <div class="pri-btn pri-high" onclick="selectPri(this,'pri-high')">🔴 High</div>
+        </div>
+      </div>
+      <div class="form-field" style="margin-top:16px;">
+        <div class="form-label">Describe the Fault</div>
+        <textarea class="form-input" id="fault-description" rows="5" placeholder="What happened? When did it start? What have you already tried?"></textarea>
+      </div>
+      <div class="form-field">
+        <div class="form-label">Attach Photo <span class="optional-tag">OPTIONAL</span></div>
+        <div class="photo-box">
+          <span class="photo-icon">📷</span>
+          Tap to take a photo or choose from gallery
+        </div>
+      </div>
+      <button class="submit-btn" id="fault-submit-btn" onclick="submitTicket('fault')">Submit Fault Report →</button>
+    </div>
+  </div>
+
+  <!-- ==================== SERVICE REQUEST SCREEN ==================== -->
+  <div class="screen" id="service-screen">
+    <div class="inner-header">
+      <button class="back-btn" onclick="showScreen('client-home-screen')">←</button>
+      <div>
+        <div class="inner-title">Service Request</div>
+        <div class="inner-sub">Pay-as-you-go or scheduled service</div>
+      </div>
+    </div>
+    <div class="form-body">
+      <div class="form-field">
+        <div class="form-label">Type of Service</div>
+        <div class="cat-grid" id="service-cat-grid">
+          <div class="cat-btn selected" onclick="selectCat('service-cat-grid',this)"><span class="cat-emoji">🔍</span><span class="cat-label">Inspection</span></div>
+          <div class="cat-btn" onclick="selectCat('service-cat-grid',this)"><span class="cat-emoji">🛠️</span><span class="cat-label">Repair</span></div>
+          <div class="cat-btn" onclick="selectCat('service-cat-grid',this)"><span class="cat-emoji">📅</span><span class="cat-label">Scheduled</span></div>
+          <div class="cat-btn" onclick="selectCat('service-cat-grid',this)"><span class="cat-emoji">🔌</span><span class="cat-label">Installation</span></div>
+          <div class="cat-btn" onclick="selectCat('service-cat-grid',this)"><span class="cat-emoji">📋</span><span class="cat-label">Report</span></div>
+          <div class="cat-btn" onclick="selectCat('service-cat-grid',this)"><span class="cat-emoji">🔩</span><span class="cat-label">Other</span></div>
+        </div>
+      </div>
+      <div class="form-field">
+        <div class="form-label">Preferred Date</div>
+        <input class="form-input" type="date" id="service-date">
+      </div>
+      <div class="form-field">
+        <div class="form-label">Description</div>
+        <textarea class="form-input" id="service-description" rows="4" placeholder="Describe what service you need..."></textarea>
+      </div>
+      <div class="form-field">
+        <div class="form-label">Attach Photo <span class="optional-tag">OPTIONAL</span></div>
+        <div class="photo-box">
+          <span class="photo-icon">📷</span>
+          Tap to take a photo or choose from gallery
+        </div>
+      </div>
+      <button class="submit-btn" onclick="submitTicket('service')">Submit Service Request →</button>
+    </div>
+  </div>
+
+  <!-- ==================== SUCCESS SCREEN ==================== -->
+  <div class="screen" id="success-screen">
+    <div class="inner-header">
+      <div style="width:36px;"></div>
+      <div class="inner-title">Ticket Submitted</div>
+    </div>
+    <div class="success-body">
+      <div class="success-ring">✓</div>
+      <div class="success-title">Ticket Created!</div>
+      <div class="ticket-display">
+        <div class="ticket-display-label">Your Ticket Number</div>
+        <div class="ticket-display-num" id="success-ticket-num">MES-0001</div>
+      </div>
+      <div class="success-msg">Your request has been logged and our team has been notified. We'll be in touch shortly.</div>
+      <div class="email-confirm">
+        📧 Notification sent to:<br>
+        <strong>support@micasa.co.za</strong><br>
+        <span style="color:var(--gray-400);font-size:11px;">Admin & GM have been copied</span>
+      </div>
+      <button class="home-btn" onclick="showScreen('client-home-screen')">← Back to Home</button>
+    </div>
+  </div>
+
+  <!-- ==================== MY TICKETS SCREEN ==================== -->
+  <div class="screen" id="my-tickets-screen">
+    <div class="inner-header">
+      <button class="back-btn" onclick="showScreen('client-home-screen')">←</button>
+      <div class="inner-title">My Tickets</div>
+    </div>
+    <div class="scroll-body">
+      <div class="section-title">All Tickets</div>
+      <div id="all-tickets-list">
+        <div style="text-align:center;padding:30px;color:var(--gray-400);font-size:13px;">Loading...</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== SCHEDULE VIEW (CLIENT) ==================== -->
+  <div class="screen" id="schedule-view-screen">
+    <div class="inner-header">
+      <button class="back-btn" onclick="showScreen('client-home-screen')">←</button>
+      <div>
+        <div class="inner-title">My Schedule</div>
+        <div class="inner-sub">Upcoming maintenance at your site</div>
+      </div>
+    </div>
+    <div class="scroll-body">
+      <div class="section-title">Upcoming</div>
+      <div class="maint-card upcoming">
+        <div class="maint-top"><span style="font-size:18px;">☀️</span><span class="maint-name">Solar Panel Annual Inspection</span><span class="freq-pill">Annual</span></div>
+        <div class="maint-due upcoming">📅 Scheduled: September 2026</div>
+      </div>
+      <div class="maint-card due-soon">
+        <div class="maint-top"><span style="font-size:18px;">🔋</span><span class="maint-name">Battery SOC & SOH Monitoring</span><span class="freq-pill">Monthly</span></div>
+        <div class="maint-due soon">⏰ Due: End of April 2026</div>
+      </div>
+      <div class="maint-card upcoming" style="margin-bottom:14px;">
+        <div class="maint-top"><span style="font-size:18px;">📊</span><span class="maint-name">Performance Monitoring Review</span><span class="freq-pill">Monthly</span></div>
+        <div class="maint-due upcoming">📅 Due: End of April 2026</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== PROFILE SCREEN ==================== -->
+  <div class="screen" id="profile-screen">
+    <div class="inner-header">
+      <button class="back-btn" onclick="showScreen('client-home-screen')">←</button>
+      <div class="inner-title">My Profile</div>
+    </div>
+    <div class="scroll-body">
+      <div style="padding:20px;">
+        <div style="background:var(--white);border-radius:16px;border:1px solid var(--gray-200);padding:20px;margin-bottom:16px;">
+          <div style="font-size:10px;color:var(--gray-400);text-transform:uppercase;letter-spacing:0.8px;margin-bottom:12px;font-weight:700;">Account Details</div>
+          <div style="display:grid;gap:12px;">
+            <div><div style="font-size:10px;color:var(--gray-400);">Company</div><div style="font-weight:700;color:#111;margin-top:2px;" id="profile-company">—</div></div>
+            <div><div style="font-size:10px;color:var(--gray-400);">Email</div><div style="font-weight:700;color:#111;margin-top:2px;" id="profile-email">—</div></div>
+            <div><div style="font-size:10px;color:var(--gray-400);">Site Address</div><div style="font-weight:700;color:#111;margin-top:2px;" id="profile-address">—</div></div>
+            <div><div style="font-size:10px;color:var(--gray-400);">SLA Type</div><div style="font-weight:700;color:var(--teal-dark);margin-top:2px;" id="profile-sla">—</div></div>
+          </div>
+        </div>
+        <button onclick="handleLogout()" style="width:100%;background:var(--gray-100);color:var(--gray-600);border:1px solid var(--gray-200);border-radius:12px;padding:14px;font-size:14px;font-weight:700;cursor:pointer;">Sign Out</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== GM DASHBOARD ==================== -->
+  <div class="screen" id="gm-home-screen">
+    <div class="app-header">
+      <div class="header-row">
+        <div class="header-icon">
+          <svg width="20" height="20" viewBox="0 0 32 32" fill="none">
+            <circle cx="16" cy="16" r="2.5" fill="#2dd4c8"/>
+            <line x1="16" y1="13.5" x2="16" y2="7" stroke="#2dd4c8" stroke-width="1.5" stroke-linecap="round"/>
+            <line x1="16" y1="18.5" x2="16" y2="25" stroke="#2dd4c8" stroke-width="1.5" stroke-linecap="round"/>
+            <line x1="18.5" y1="16" x2="25" y2="16" stroke="#2dd4c8" stroke-width="1.5" stroke-linecap="round"/>
+            <line x1="13.5" y1="16" x2="7" y2="16" stroke="#2dd4c8" stroke-width="1.5" stroke-linecap="round"/>
+          </svg>
+        </div>
+        <div class="header-brand">MES <span>AFRICA</span></div>
+        <div class="header-role-badge">GM</div>
+      </div>
+    </div>
+    <div class="tab-bar">
+      <div class="tab active" onclick="gmTab('overview')">Overview</div>
+      <div class="tab" onclick="gmTab('schedule')">Schedule</div>
+      <div class="tab" onclick="gmTab('clients')">Clients</div>
+      <div class="tab" onclick="gmTab('tickets')">Tickets</div>
+    </div>
+
+    <!-- OVERVIEW TAB -->
+    <div id="gm-tab-overview" class="scroll-body">
+      <div class="section-title">Live Status</div>
+      <div class="stat-grid">
+        <div class="stat-card alert"><div class="stat-num" id="stat-overdue">—</div><div class="stat-label">Overdue maintenance</div></div>
+        <div class="stat-card good"><div class="stat-num" id="stat-due-month">—</div><div class="stat-label">Due this month</div></div>
+        <div class="stat-card info"><div class="stat-num" id="stat-open-tickets">—</div><div class="stat-label">Open tickets</div></div>
+        <div class="stat-card"><div class="stat-num" id="stat-clients">—</div><div class="stat-label">Active clients</div></div>
+      </div>
+      <div class="section-title" style="margin-top:20px;">Needs Attention</div>
+      <div id="gm-attention-list">
+        <div style="text-align:center;padding:30px;color:var(--gray-400);font-size:13px;">Loading...</div>
+      </div>
+    </div>
+
+    <!-- SCHEDULE TAB -->
+    <div id="gm-tab-schedule" class="scroll-body" style="display:none;">
+      <div onclick="showScreen('annexure-screen')" style="background:var(--navy-surface);margin:16px 20px 0;border-radius:16px;border:1px solid rgba(45,212,200,0.3);padding:16px;cursor:pointer;display:flex;align-items:center;justify-content:space-between;">
+        <div>
+          <div style="color:var(--teal);font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:0.8px;">O&M Annexure A</div>
+          <div style="color:var(--white);font-family:var(--font-display);font-size:15px;font-weight:700;margin-top:4px;">Solar PV Checklist</div>
+          <div style="color:var(--gray-400);font-size:11px;margin-top:2px;">Monthly · Quarterly · Bi-Annual · Annual</div>
+        </div>
+        <span style="font-size:24px;">☀️</span>
+      </div>
+      <div style="background:var(--navy-surface);margin:10px 20px 0;border-radius:16px;border:1px solid rgba(45,212,200,0.3);padding:16px;cursor:pointer;display:flex;align-items:center;justify-content:space-between;">
+        <div>
+          <div style="color:var(--teal);font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:0.8px;">O&M Annexure B</div>
+          <div style="color:var(--white);font-family:var(--font-display);font-size:15px;font-weight:700;margin-top:4px;">Heat Pump / Elon Service</div>
+          <div style="color:var(--gray-400);font-size:11px;margin-top:2px;">Annual service checklist</div>
+        </div>
+        <span style="font-size:24px;">🌡️</span>
+      </div>
+      <div class="section-title" style="margin-top:20px;">This Month — April 2026</div>
+      <div id="gm-schedule-list">
+        <div style="text-align:center;padding:30px;color:var(--gray-400);font-size:13px;">Loading schedule...</div>
+      </div>
+    </div>
+
+    <!-- CLIENTS TAB -->
+    <div id="gm-tab-clients" class="scroll-body" style="display:none;">
+      <div class="section-title">All SLA Clients</div>
+      <div id="gm-clients-list">
+        <div style="text-align:center;padding:30px;color:var(--gray-400);font-size:13px;">Loading clients...</div>
+      </div>
+    </div>
+
+    <!-- TICKETS TAB -->
+    <div id="gm-tab-tickets" class="scroll-body" style="display:none;">
+      <div class="section-title">All Open Tickets</div>
+      <div id="gm-tickets-list">
+        <div style="text-align:center;padding:30px;color:var(--gray-400);font-size:13px;">Loading tickets...</div>
+      </div>
+    </div>
+
+    <div class="bottom-nav">
+      <div class="nav-item active"><span class="nav-ico">📊</span><span class="nav-lbl">Dashboard</span></div>
+      <div class="nav-item"><span class="nav-ico">🎫</span><span class="nav-lbl">Tickets</span></div>
+      <div class="nav-item"><span class="nav-ico">👥</span><span class="nav-lbl">Clients</span></div>
+      <div class="nav-item" onclick="handleLogout()"><span class="nav-ico">🚪</span><span class="nav-lbl">Sign Out</span></div>
+    </div>
+  </div>
+
+  <!-- ==================== ANNEXURE SCREEN ==================== -->
+  <div class="screen" id="annexure-screen">
+    <div class="inner-header">
+      <button class="back-btn" onclick="showScreen('gm-home-screen')">←</button>
+      <div>
+        <div class="inner-title">Annexure A — Solar PV</div>
+        <div class="inner-sub">Full O&M maintenance checklist</div>
+      </div>
+    </div>
+    <div class="scroll-body">
+      <div class="annex-group">
+        <div class="annex-header">Monthly <span class="annex-count">4 items</span></div>
+        <div class="annex-row"><div class="annex-check done" onclick="toggleCheck(this)">✓</div><div class="annex-text">Continuously monitor the performance of the plant</div><div class="annex-date">14 Apr</div></div>
+        <div class="annex-row"><div class="annex-check done" onclick="toggleCheck(this)">✓</div><div class="annex-text">Check that all inverters perform as they should</div><div class="annex-date">14 Apr</div></div>
+        <div class="annex-row"><div class="annex-check" onclick="toggleCheck(this)"></div><div class="annex-text">Keep track of long-term performance of plant</div><div class="annex-date">Due now</div></div>
+        <div class="annex-row"><div class="annex-check" onclick="toggleCheck(this)"></div><div class="annex-text">Monitoring of battery State of Charge (SOC)</div><div class="annex-date">Due now</div></div>
+        <div class="annex-row"><div class="annex-check" onclick="toggleCheck(this)"></div><div class="annex-text">Monitoring of battery State of Health (SOH)</div><div class="annex-date">Due now</div></div>
+      </div>
+      <div class="annex-group">
+        <div class="annex-header">Quarterly <span class="annex-count">2 items</span></div>
+        <div class="annex-row"><div class="annex-check done" onclick="toggleCheck(this)">✓</div><div class="annex-text">Check alerts setup on solar plant</div><div class="annex-date">Jan 2026</div></div>
+        <div class="annex-row"><div class="annex-check" onclick="toggleCheck(this)"></div><div class="annex-text">Quarterly performance review & report to client</div><div class="annex-date">Due 30 Apr</div></div>
+      </div>
+      <div class="annex-group">
+        <div class="annex-header">Bi-Annual <span class="annex-count">2 items</span></div>
+        <div class="annex-row"><div class="annex-check done" onclick="toggleCheck(this)">✓</div><div class="annex-text">Walk through PV array — check for damage, broken glass, deformation, discolouration</div><div class="annex-date">Oct 2025</div></div>
+        <div class="annex-row"><div class="annex-check done" onclick="toggleCheck(this)">✓</div><div class="annex-text">Determine if new objects causing shading — remove debris from behind collectors and gutters</div><div class="annex-date">Oct 2025</div></div>
+      </div>
+      <div class="annex-group">
+        <div class="annex-header">Annual <span class="annex-count">20+ items</span></div>
+        <div class="annex-row"><div class="annex-check done" onclick="toggleCheck(this)">✓</div><div class="annex-text">Visual inspection of PV Module frames for rust, structural damage, sharp objects in contact with surfaces</div><div class="annex-date">Sep 2025</div></div>
+        <div class="annex-row"><div class="annex-check done" onclick="toggleCheck(this)">✓</div><div class="annex-text">Test running current and compare strings per MPPT</div><div class="annex-date">Sep 2025</div></div>
+        <div class="annex-row"><div class="annex-check done" onclick="toggleCheck(this)">✓</div><div class="annex-text">Infrared camera inspection for hot spots and PID on PV modules</div><div class="annex-date">Sep 2025</div></div>
+        <div class="annex-row"><div class="annex-check done" onclick="toggleCheck(this)">✓</div><div class="annex-text">Check DC cabling for physical damage, bite marks, MC4 connectors, cracks and insulation resistance</div><div class="annex-date">Sep 2025</div></div>
+        <div class="annex-row"><div class="annex-check done" onclick="toggleCheck(this)">✓</div><div class="annex-text">Fuse boxes: check connections, test string currents, inspect for dust/corrosion, re-torque all connections</div><div class="annex-date">Sep 2025</div></div>
+        <div class="annex-row"><div class="annex-check done" onclick="toggleCheck(this)">✓</div><div class="annex-text">Check inverter firmware and update if needed. Test correct operation per OEM specs</div><div class="annex-date">Sep 2025</div></div>
+        <div class="annex-row"><div class="annex-check done" onclick="toggleCheck(this)">✓</div><div class="annex-text">AC wiring and DB boards: infrared inspection, check for dust/corrosion, re-torque all connections</div><div class="annex-date">Sep 2025</div></div>
+        <div class="annex-row"><div class="annex-check done" onclick="toggleCheck(this)">✓</div><div class="annex-text">Measure earthing system resistance — re-torque all connections on air-termination and earth terminal</div><div class="annex-date">Sep 2025</div></div>
+        <div class="annex-row"><div class="annex-check done" onclick="toggleCheck(this)">✓</div><div class="annex-text">Tighten battery cable connections as needed</div><div class="annex-date">Sep 2025</div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== REMINDER MODAL ==================== -->
+  <div class="modal-overlay" id="remind-modal">
+    <div class="modal-sheet">
+      <div class="modal-handle"></div>
+      <div class="modal-title">Send Maintenance Reminder</div>
+      <div class="modal-sub" id="modal-sub-text">Notify client and request confirmation</div>
+      <div class="modal-preview" id="modal-preview-text">
+        <strong>To:</strong> Client<br>
+        <strong>Re:</strong> Scheduled Maintenance<br>
+        <strong>Message:</strong> Your scheduled maintenance is due. Please confirm a suitable date for our technician to attend.
+      </div>
+      <button class="modal-btn primary" onclick="sendReminder()">📧 Send Reminder to Client</button>
+      <button class="modal-btn secondary" onclick="closeModal()">Cancel</button>
+    </div>
+  </div>
+
+  <!-- ==================== TOAST ==================== -->
+  <div class="toast" id="toast"></div>
+
+  <script>
+    // ===== SUPABASE SETUP =====
+    const SUPABASE_URL = 'https://hcgcsnjdbwigvwxshzzz.supabase.co';
+    const SUPABASE_KEY = 'sb_publishable_yd6pU7m4RMJzI3rv_JWOkQ_NXt8dROY';
+    const { createClient } = supabase;
+    const sb = createClient(SUPABASE_URL, SUPABASE_KEY);
+
+    // ===== STATE =====
+    let currentUser = null;
+    let currentProfile = null;
+    let selectedPriority = 'medium';
+    let currentGmTab = 'overview';
+
+    // ===== SCREEN NAVIGATION =====
+    function showScreen(id) {
+      document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+      document.getElementById(id).classList.add('active');
+      window.scrollTo(0,0);
+    }
+
+    // ===== TOAST =====
+    function showToast(msg) {
+      const t = document.getElementById('toast');
+      t.textContent = msg;
+      t.classList.add('show');
+      setTimeout(() => t.classList.remove('show'), 3000);
+    }
+
+    // ===== FORM HELPERS =====
+    function selectCat(gridId, el) {
+      document.querySelectorAll('#'+gridId+' .cat-btn').forEach(b => b.classList.remove('selected'));
+      el.classList.add('selected');
+    }
+    function selectPri(el, cls) {
+      document.querySelectorAll('.pri-btn').forEach(b => b.classList.remove('selected'));
+      el.classList.add('selected');
+      selectedPriority = cls === 'pri-low' ? 'low' : cls === 'pri-high' ? 'high' : 'medium';
+    }
+    function toggleCheck(el) {
+      el.classList.toggle('done');
+      el.textContent = el.classList.contains('done') ? '✓' : '';
+    }
+
+    // ===== GM TABS =====
+    function gmTab(tab) {
+      currentGmTab = tab;
+      ['overview','schedule','clients','tickets'].forEach(t => {
+        const el = document.getElementById('gm-tab-'+t);
+        if(el) el.style.display = t===tab ? 'block' : 'none';
+      });
+      document.querySelectorAll('.tab').forEach((el,i) => {
+        el.classList.toggle('active', ['overview','schedule','clients','tickets'][i]===tab);
+      });
+      if(tab==='clients') loadGmClients();
+      if(tab==='tickets') loadGmTickets();
+    }
+
+    // ===== MODAL =====
+    function openRemindModal(client, item) {
+      document.getElementById('modal-sub-text').textContent = client + ' · ' + item;
+      document.getElementById('modal-preview-text').innerHTML =
+        '<strong>To:</strong> ' + client + '<br>' +
+        '<strong>Re:</strong> ' + item + '<br>' +
+        '<strong>Message:</strong> Your scheduled maintenance is due. Please confirm a suitable date for our technician to attend.';
+      document.getElementById('remind-modal').classList.add('open');
+    }
+    function closeModal() { document.getElementById('remind-modal').classList.remove('open'); }
+    function sendReminder() {
+      closeModal();
+      showToast('✓ Reminder sent to client');
+    }
+
+    // ===== AUTH =====
+    async function handleLogin() {
+      const email = document.getElementById('login-email').value.trim();
+      const password = document.getElementById('login-password').value;
+      const btn = document.getElementById('login-btn');
+      const errEl = document.getElementById('login-error');
+      const loadEl = document.getElementById('login-loading');
+
+      if(!email || !password) { errEl.textContent = 'Please enter your email and password.'; errEl.style.display='block'; return; }
+
+      btn.disabled = true;
+      errEl.style.display = 'none';
+      loadEl.style.display = 'block';
+
+      const { data, error } = await sb.auth.signInWithPassword({ email, password });
+
+      if(error) {
+        errEl.textContent = error.message || 'Login failed. Please check your credentials.';
+        errEl.style.display = 'block';
+        loadEl.style.display = 'none';
+        btn.disabled = false;
+        return;
+      }
+
+      currentUser = data.user;
+      await loadUserProfile();
+    }
+
+    async function loadUserProfile() {
+      const { data, error } = await sb.from('profiles').select('*').eq('id', currentUser.id).single();
+
+      document.getElementById('login-loading').style.display = 'none';
+      document.getElementById('login-btn').disabled = false;
+
+      if(error || !data) {
+        // New user — show client home with basic info
+        routeByRole('client');
+        return;
+      }
+
+      currentProfile = data;
+      routeByRole(data.role || 'client');
+    }
+
+    function routeByRole(role) {
+      if(role === 'gm' || role === 'admin') {
+        loadGmDashboard();
+        showScreen('gm-home-screen');
+      } else {
+        loadClientDashboard();
+        showScreen('client-home-screen');
+      }
+    }
+
+    async function handleLogout() {
+      await sb.auth.signOut();
+      currentUser = null;
+      currentProfile = null;
+      showScreen('login-screen');
+    }
+
+    // ===== CLIENT DASHBOARD =====
+    async function loadClientDashboard() {
+      if(!currentUser) return;
+
+      // Set display name
+      const name = currentProfile?.company_name || currentProfile?.full_name || currentUser.email;
+      document.getElementById('client-name-display').textContent = name;
+      document.getElementById('client-sla-display').textContent = currentProfile?.sla_type || 'O&M SLA — Active';
+      document.getElementById('profile-company').textContent = currentProfile?.company_name || '—';
+      document.getElementById('profile-email').textContent = currentUser.email;
+      document.getElementById('profile-address').textContent = currentProfile?.site_address || '—';
+      document.getElementById('profile-sla').textContent = currentProfile?.sla_type || '—';
+
+      // Load tickets
+      await loadClientTickets();
+    }
+
+    async function loadClientTickets() {
+      const { data, error } = await sb.from('tickets')
+        .select('*')
+        .eq('client_id', currentUser.id)
+        .order('created_at', { ascending: false })
+        .limit(5);
+
+      const listEl = document.getElementById('client-tickets-list');
+      const allListEl = document.getElementById('all-tickets-list');
+
+      if(error || !data || data.length === 0) {
+        listEl.innerHTML = '<div style="text-align:center;padding:30px;color:var(--gray-400);font-size:13px;">No tickets yet.<br>Log your first request above.</div>';
+        if(allListEl) allListEl.innerHTML = listEl.innerHTML;
+        return;
+      }
+
+      const ticketHTML = data.map(t => `
+        <div class="ticket-card">
+          <div class="ticket-num">${t.ticket_number}</div>
+          <div class="ticket-info">
+            <div class="ticket-desc">${t.description?.substring(0,45) || 'No description'}${t.description?.length > 45 ? '...' : ''}</div>
+            <div class="ticket-date">${new Date(t.created_at).toLocaleDateString('en-ZA',{day:'numeric',month:'short',year:'numeric'})}</div>
+          </div>
+          <div class="status-badge status-${t.status === 'open' ? 'open' : t.status === 'in_progress' ? 'progress' : 'closed'}">${t.status === 'in_progress' ? 'In Progress' : t.status?.charAt(0).toUpperCase() + t.status?.slice(1)}</div>
+        </div>
+      `).join('');
+
+      listEl.innerHTML = ticketHTML;
+      if(allListEl) allListEl.innerHTML = ticketHTML;
+    }
+
+    // ===== SUBMIT TICKET =====
+    async function submitTicket(type) {
+      const descId = type === 'fault' ? 'fault-description' : 'service-description';
+      const desc = document.getElementById(descId).value.trim();
+
+      if(!desc) { showToast('⚠ Please describe the issue'); return; }
+
+      const btn = document.querySelector(`#${type}-screen .submit-btn`);
+      btn.disabled = true;
+      btn.textContent = 'Submitting...';
+
+      // Get next ticket number
+      const { data: countData } = await sb.from('tickets').select('id', { count: 'exact' });
+      const count = (countData?.length || 0) + 1;
+      const ticketNum = 'MES-' + String(count).padStart(4, '0');
+
+      const catSelected = document.querySelector(`#${type === 'fault' ? 'fault' : 'service'}-cat-grid .cat-btn.selected .cat-label`);
+      const category = catSelected?.textContent || 'General';
+
+      const { data, error } = await sb.from('tickets').insert({
+        ticket_number: ticketNum,
+        client_id: currentUser.id,
+        type: type,
+        category: category,
+        description: desc,
+        priority: selectedPriority,
+        status: 'open',
+        company_id: currentProfile?.company_id || null
+      }).select().single();
+
+      btn.disabled = false;
+      btn.textContent = type === 'fault' ? 'Submit Fault Report →' : 'Submit Service Request →';
+
+      if(error) {
+        showToast('⚠ Error submitting ticket. Please try again.');
+        console.error(error);
+        return;
+      }
+
+      document.getElementById('success-ticket-num').textContent = ticketNum;
+      document.getElementById(descId).value = '';
+      showScreen('success-screen');
+      loadClientTickets();
+    }
+
+    // ===== GM DASHBOARD =====
+    async function loadGmDashboard() {
+      // Load stats
+      const { data: tickets } = await sb.from('tickets').select('*').eq('status', 'open');
+      const { data: clients } = await sb.from('profiles').select('*').eq('role', 'client');
+
+      document.getElementById('stat-open-tickets').textContent = tickets?.length || 0;
+      document.getElementById('stat-clients').textContent = clients?.length || 0;
+      document.getElementById('stat-overdue').textContent = '3'; // Placeholder - would calc from schedule
+      document.getElementById('stat-due-month').textContent = '7';
+
+      // Load attention items (open tickets)
+      const attentionEl = document.getElementById('gm-attention-list');
+      if(tickets && tickets.length > 0) {
+        attentionEl.innerHTML = tickets.slice(0,3).map(t => `
+          <div class="maint-card ${t.priority === 'high' ? 'overdue' : 'due-soon'}">
+            <div class="maint-top"><span style="font-size:18px;">${t.type === 'fault' ? '⚡' : '🔧'}</span>
+            <span class="maint-name">${t.ticket_number} — ${t.category}</span>
+            <span class="freq-pill">${t.priority || 'medium'}</span></div>
+            <div class="maint-client">${t.description?.substring(0,60) || ''}...</div>
+            <div class="maint-due ${t.priority === 'high' ? 'overdue' : 'soon'}">
+              ${t.priority === 'high' ? '⚠ High Priority' : '⏰ Open'} · ${new Date(t.created_at).toLocaleDateString('en-ZA')}
+            </div>
+            <div class="maint-actions">
+              <button class="maint-btn done" onclick="closeTicket('${t.id}')">✓ Close</button>
+              <button class="maint-btn remind" onclick="openRemindModal('Client','${t.category}')">📧 Remind</button>
+            </div>
+          </div>
+        `).join('');
+      } else {
+        attentionEl.innerHTML = '<div style="text-align:center;padding:30px;color:var(--gray-400);font-size:13px;">All clear — no urgent items 🎉</div>';
+      }
+
+      // Sample schedule items
+      document.getElementById('gm-schedule-list').innerHTML = `
+        <div class="maint-card overdue">
+          <div class="maint-top"><span style="font-size:18px;">⚡</span><span class="maint-name">Monthly Performance Monitoring</span><span class="freq-pill">Monthly</span></div>
+          <div class="maint-client">All Solar Clients</div>
+          <div class="maint-due overdue">⚠ Due now</div>
+          <div class="maint-actions">
+            <button class="maint-btn done">✓ Mark Done</button>
+            <button class="maint-btn remind" onclick="openRemindModal('All Clients','Monthly Monitoring')">📧 Remind All</button>
+          </div>
+        </div>
+        <div class="maint-card due-soon">
+          <div class="maint-top"><span style="font-size:18px;">🔋</span><span class="maint-name">Battery SOH Check</span><span class="freq-pill">Monthly</span></div>
+          <div class="maint-client">All Battery Clients</div>
+          <div class="maint-due soon">⏰ Due end of month</div>
+          <div class="maint-actions">
+            <button class="maint-btn done">✓ Mark Done</button>
+            <button class="maint-btn remind" onclick="openRemindModal('Battery Clients','Battery SOH Check')">📧 Remind</button>
+          </div>
+        </div>
+      `;
+    }
+
+    async function loadGmClients() {
+      const { data, error } = await sb.from('profiles').select('*').eq('role', 'client');
+      const el = document.getElementById('gm-clients-list');
+      if(error || !data || data.length === 0) {
+        el.innerHTML = '<div style="text-align:center;padding:30px;color:var(--gray-400);font-size:13px;">No clients registered yet.</div>';
+        return;
+      }
+      el.innerHTML = data.map(c => `
+        <div class="client-card">
+          <div class="client-header">
+            <div class="client-avatar">${(c.company_name||c.full_name||'?').substring(0,2).toUpperCase()}</div>
+            <div>
+              <div class="client-name">${c.company_name || c.full_name || 'Unknown'}</div>
+              <div class="client-sla">${c.sla_type || 'SLA Client'}</div>
+            </div>
+            <div class="client-badges"><span class="mini-badge ok">Active</span></div>
+          </div>
+          <div class="client-strip">
+            <div class="strip-pill done">Profile complete ✓</div>
+            <div class="strip-pill">${c.site_address || 'No address'}</div>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    async function loadGmTickets() {
+      const { data, error } = await sb.from('tickets').select('*').order('created_at', { ascending: false }).limit(20);
+      const el = document.getElementById('gm-tickets-list');
+      if(error || !data || data.length === 0) {
+        el.innerHTML = '<div style="text-align:center;padding:30px;color:var(--gray-400);font-size:13px;">No tickets yet.</div>';
+        return;
+      }
+      el.innerHTML = data.map(t => `
+        <div class="ticket-card">
+          <div class="ticket-num">${t.ticket_number}</div>
+          <div class="ticket-info">
+            <div class="ticket-desc">${t.description?.substring(0,50) || ''}...</div>
+            <div class="ticket-date">${t.category} · ${new Date(t.created_at).toLocaleDateString('en-ZA')}</div>
+          </div>
+          <div class="status-badge status-${t.status === 'open' ? 'open' : t.status === 'in_progress' ? 'progress' : 'closed'}">${t.status === 'in_progress' ? 'In Progress' : t.status?.charAt(0).toUpperCase() + t.status?.slice(1)}</div>
+        </div>
+      `).join('');
+    }
+
+    async function closeTicket(id) {
+      await sb.from('tickets').update({ status: 'closed' }).eq('id', id);
+      showToast('✓ Ticket closed');
+      loadGmDashboard();
+    }
+
+    // ===== AUTH STATE LISTENER =====
+    sb.auth.onAuthStateChange(async (event, session) => {
+      if(event === 'SIGNED_IN' && session) {
+        currentUser = session.user;
+        await loadUserProfile();
+      } else if(event === 'SIGNED_OUT') {
+        currentUser = null;
+        currentProfile = null;
+        showScreen('login-screen');
+      }
+    });
+
+    // Check existing session on load
+    (async () => {
+      const { data: { session } } = await sb.auth.getSession();
+      if(session) {
+        currentUser = session.user;
+        await loadUserProfile();
+      }
+    })();
+  </script>
+</body>
+</html>
